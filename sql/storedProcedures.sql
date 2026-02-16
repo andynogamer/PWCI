@@ -88,6 +88,22 @@ BEGIN
     SET nombre = p_nombre, apellido = p_apellido, fechaNacimiento = p_fechaNacimiento, genero = p_genero, idPaisNacimiento = p_idPaisNacimiento, idNacionalidad = p_idNacionalidad
     WHERE id = p_id;
 END //
+
+--CONSULTA--
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaUsuario //
+CREATE PROCEDURE sp_ConsultaUsuario(
+    IN p_id int
+)
+BEGIN 
+    SELECT u.id, u.idTipo, u.nombre, u.apellido, u.fechaNacimiento, u.foto, u.genero, p.nombre AS pais, n.gentilicioMasculino AS nacionalidadMasculino, n.gentilicioFemenino AS nacionalidadFemenino, u.correoElectronico
+    FROM usuario u
+    INNER JOIN pais p ON p.id = u.idPaisNacimiento
+    INNER JOIN pais n ON n.id = u.idNacionalidad
+    WHERE u.id = p_id;
+END //
+
+
 ---------------------------------------------------------------------------------
 
 ------------------------------------PAIS-----------------------------------------
@@ -133,6 +149,16 @@ BEGIN
     SET nombre = p_nombre, gentilicioMasculino = p_gentilicioMasculino, gentilicioFemenino = p_gentilicioFemenino, nombreSeleccion = p_nombreSeleccion    
     WHERE id = p_id;
 END //
+
+--CONSULTAS--
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaPaises //
+CREATE PROCEDURE sp_ConsultaPaises()
+BEGIN
+    SELECT id, nombre
+    FROM pais;
+END //
+
 ---------------------------------------------------------------------------------
 
 -----------------------------------MUNDIAL---------------------------------------
@@ -187,6 +213,27 @@ BEGIN
     SET nombre = p_nombre, fecha = p_fecha, descripcion = p_descripcion
     WHERE id = p_id;
 END //
+
+--CONSULTAS--
+DELIMITER // --TODOS LOS MUNDIALES
+DROP PROCEDURE IF EXISTS sp_ConsultaMundiales //
+CREATE PROCEDURE sp_ConsultaMundiales()
+BEGIN   
+    SELECT id, mundial, fecha, logo, pais
+    FROM vw_MundialesSedes;
+END //
+
+DELIMITER // --POR PAIS SEDE
+DROP PROCEDURE IF EXISTS sp_ConsultaMundialesPorSede //
+CREATE PROCEDURE sp_ConsultaMundialesPorSede(
+    IN p_idPais int
+)
+BEGIN   
+    SELECT id, mundial, fecha, logo, pais
+    FROM vw_MundialesSedes
+    WHERE idPais =p_idPais;
+END //
+
 ---------------------------------------------------------------------------------
 
 -------------------------------CATEGORIA-----------------------------------------
@@ -218,6 +265,14 @@ BEGIN
     WHERE id = p_id;
 END //
 
+--CONSULTAS--
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaCategorias //
+CREATE PROCEDURE sp_ConsultaCategorias()
+BEGIN   
+    SELECT id, categoria
+    FROM categoria;
+END //
 ---------------------------------------------------------------------------------
 
 ----------------------------------SEDE-------------------------------------------
@@ -264,7 +319,7 @@ BEGIN
         idPais,
         descripcion,
         multimedia,
-        estatus
+        idEstatus
     )
     VALUES(
         p_idMundial,
@@ -286,6 +341,83 @@ CREATE PROCEDURE sp_EliminarPublicacion(
 BEGIN
     DELETE FROM publicacion 
     WHERE id = p_id;
+END //
+
+--CONSULTA--
+
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaPublicacion // --DETALLE INDIVIDUAL PUBLICACION
+CREATE PROCEDURE sp_ConsultaPublicacion(
+    IN p_id int
+)
+BEGIN
+    SELECT id, nombreMundial, fechaMundial, nombreUsuario, correoElectronico, categoria,
+    nombre, nombreSeleccion, descripcion, multimedia
+    FROM vw_PublicacionesDefault
+    WHERE id = p_id;
+END //
+
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaPublicacionesMundial // --PUBLICACIONES DENTRO DE CADA MUNDIAL
+CREATE PROCEDURE sp_ConsultaPublicacionesMundial(
+    IN p_idMundial int
+)
+BEGIN
+    
+    SELECT id, idMundial, nombreMundial, fechaMundial, nombreUsuario, correoElectronico, categoria,
+    nombre, nombreSeleccion, descripcion, multimedia
+    FROM vw_PublicacionesDefault
+    WHERE idMundial = p_idMundial;
+END //
+
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaPublicacionesMundialCategoria // --MUNDIALCATEGORIA
+CREATE PROCEDURE sp_ConsultaPublicacionesMundialCategoria(
+    IN p_idMundial int,
+    IN p_idCategoria int
+)
+BEGIN
+    
+    SELECT id, idMundial, nombreMundial, fechaMundial, nombreUsuario, correoElectronico, categoria,
+    nombre, nombreSeleccion, descripcion, multimedia
+    FROM vw_PublicacionesDefault
+    WHERE idMundial = p_idMundial AND idCategoria = p_idCategoria;
+END //
+
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaPublicacionesBusqueda // --BUSQUEDA DE PUBLICACIONES
+CREATE PROCEDURE sp_ConsultaPublicacionesBusqueda(
+    IN p_busqueda varchar(100)
+)
+BEGIN
+    SET @termino = CONCAT('%',p_busqueda,'%');
+    SELECT id, idMundial, nombreMundial, fechaMundial, nombreUsuario, correoElectronico, categoria,
+    nombre, nombreSeleccion, descripcion, multimedia
+    FROM vw_PublicacionesDefault
+    WHERE (
+        categoria LIKE @termino
+        OR correoElectronico LIKE @termino
+        OR CAST(YEAR(fechaMundial) AS CHAR) LIKE @termino
+        OR idMundial IN(
+            SELECT s.idMundial
+            FROM sede s 
+            INNER JOIN pais p ON s.idPais = p.id
+            WHERE p.nombre LIKE @termino
+        )
+    ) AND idEstatus = 1;
+END //
+
+DELIMITER //
+DROP PROCEDURE IF EXISTS sp_ConsultaPublicacionesUsuario// --PUBLICACIONES DEL USUARIO
+CREATE PROCEDURE sp_ConsultaPublicacionesUsuario(
+    IN p_idUsuario int
+)
+BEGIN
+    
+    SELECT id, idMundial, nombreMundial, fechaMundial, nombreUsuario, correoElectronico, categoria,
+    nombre, nombreSeleccion, descripcion, multimedia
+    FROM vw_PublicacionesDefault
+    WHERE idUsuario = p_idUsuario;
 END //
 ---------------------------------------------------------------------------------
 
